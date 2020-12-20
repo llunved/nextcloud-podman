@@ -42,6 +42,8 @@ RUN for CURF in /sysimg/etc/nextcloud /sysimg/var/lib/nextcloud ; do \
     mv -fv ${CURF} ${CURF}.default ;\
     done
 
+ADD www.conf /etc/php-fpm.d/www.conf
+
 RUN mkdir /sysimg/etc/php && \
     for CURF in /etc/php-fpm.conf /etc/php-fpm.d /etc/php-zts.d /etc/php.d /etc/php.ini; do \
     mv -fv /sysimg${CURF} /sysimg/etc/php/$(basename ${CURF}) ; \

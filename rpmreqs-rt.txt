@@ -1,4 +1,5 @@
 tzdata
 php-fpm
+php-opcache
 nextcloud
 nextcloud-sqlite
