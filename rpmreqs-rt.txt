@@ -1,0 +1,4 @@
+tzdata
+php-fpm
+nextcloud
+nextcloud-sqlite
