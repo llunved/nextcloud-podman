@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+# TODO: Be smarter about copying config files - find /etc/nextcloud/ | sed -e 's/\/etc\(.*\)/\1/'
 set -x
 
 SERVICE=$IMAGE

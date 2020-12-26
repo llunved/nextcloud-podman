@@ -7,9 +7,10 @@ OS_IMAGE=${OS_IMAGE:-"registry.fedoraproject.org/fedora:${OS_RELEASE}"}
 BUILD_ID=${BUILD_ID:-`date +%s`}
 BUILD_ARCH=${BUILD_ARCH:-`uname -m`}
 PUSHREG=${PUSHREG:-""}
+DEVBUILD=${DEVBUILD:-""}
 
 echo sudo podman build --build-arg OS_RELEASE=${OS_RELEASE} --build-arg OS_IMAGE=${OS_IMAGE} -t ${BUILD_ARCH}/${IMAGE_NAME}:${BUILD_ID} -f Containerfile
-sudo podman build --build-arg OS_RELEASE=${OS_RELEASE} --build-arg OS_IMAGE=${OS_IMAGE} -t ${BUILD_ARCH}/${IMAGE_NAME}:${BUILD_ID} -f Containerfile
+sudo podman build --build-arg OS_RELEASE=${OS_RELEASE} --build-arg OS_IMAGE=${OS_IMAGE} --build-arg DEVBUILD=${DEVBUILD} -t ${BUILD_ARCH}/${IMAGE_NAME}:${BUILD_ID} -f Containerfile
 
 
 if [ $? -eq 0 ]; then

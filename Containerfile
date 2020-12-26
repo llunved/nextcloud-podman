@@ -7,6 +7,7 @@ ARG OS_RELEASE
 ARG OS_IMAGE
 ARG HTTP_PROXY=""
 #ARG USER="apache"
+ARG DEVBUILD=""
 
 LABEL MAINTAINER riek@llunved.net
 
@@ -27,7 +28,8 @@ RUN dnf -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-rele
 
 # Create the minimal target environment
 RUN mkdir /sysimg \
-    && dnf install --installroot /sysimg --releasever $OS_RELEASE --setopt install_weak_deps=false --nodocs -y coreutils-single glibc-minimal-langpack $(cat rpmreqs-rt.txt) \
+    && dnf install -y --installroot /sysimg --releasever $OS_RELEASE --setopt install_weak_deps=false --nodocs coreutils-single glibc-minimal-langpack $(cat rpmreqs-rt.txt) \
+    && if [ ! -z "$DEVBUILD" ] ; then dnf install -y --installroot /sysimg --releasever $OS_RELEASE --setopt install_weak_deps=false --nodoc $(cat rpmreqs-dev.txt); fi \
     && rm -rf /sysimg/var/cache/*
 
 #FIXME this needs to be more elegant
@@ -42,7 +44,8 @@ RUN for CURF in /sysimg/etc/nextcloud /sysimg/var/lib/nextcloud ; do \
     mv -fv ${CURF} ${CURF}.default ;\
     done
 
-ADD www.conf /etc/php-fpm.d/www.conf
+ADD www.conf /sysimg/etc/php-fpm.d/www.conf
+ADD 10-opcache.ini /sysimg/etc/nextcloud/php/php.d/10-opcache.ini
 
 RUN mkdir /sysimg/etc/php && \
     for CURF in /etc/php-fpm.conf /etc/php-fpm.d /etc/php-zts.d /etc/php.d /etc/php.ini; do \
