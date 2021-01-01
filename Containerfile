@@ -1,7 +1,7 @@
 ARG OS_RELEASE=33
-ARG OS_IMAGE=fedora:$OS_RELEASE
+ARG OS_IMAGE=fedora-minimal:$OS_RELEASE
 
-FROM $OS_IMAGE as build
+FROM $OS_IMAGE 
 
 ARG OS_RELEASE
 ARG OS_IMAGE
@@ -21,73 +21,55 @@ WORKDIR /nextcloud
 ADD ./rpmreqs-rt.txt ./rpmreqs-build.txt ./rpmreqs-dev.txt /nextcloud/
 
 ENV http_proxy=$HTTP_PROXY
-RUN dnf -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$OS_RELEASE.noarch.rpm \
-    https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$OS_RELEASE.noarch.rpm \
-    && dnf -y upgrade \
-    && dnf -y install $(cat rpmreqs-build.txt) \
-    && if [ ! -z "$DEVBUILD" ] ; then dnf -y install $(cat rpmreqs-dev.txt); fi 
-
-# Create the minimal target environment
-RUN mkdir /sysimg \
-    && dnf install -y --installroot /sysimg --releasever $OS_RELEASE --setopt install_weak_deps=false --nodocs coreutils-single glibc-minimal-langpack $(cat rpmreqs-rt.txt) \
-    && if [ ! -z "$DEVBUILD" ] ; then dnf install -y --installroot /sysimg --releasever $OS_RELEASE --setopt install_weak_deps=false --nodoc $(cat rpmreqs-dev.txt); fi \
-    && rm -rf /sysimg/var/cache/*
+RUN microdnf -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$OS_RELEASE.noarch.rpm \
+    https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$OS_RELEASE.noarch.rpm  && \
+    microdnf -y upgrade && \
+    microdnf install -y --setopt install_weak_deps=false --nodocs $(cat rpmreqs-rt.txt) && \
+    if [ ! -z "$DEVBUILD" ] ; then microdnf install -y --setopt install_weak_deps=false --nodoc $(cat rpmreqs-dev.txt); fi && \
+    rm -rf /var/cache/*
 
 #FIXME this needs to be more elegant
 RUN ln -s /sysimg/usr/share/zoneinfo/America/New_York /sysimg/etc/localtime
 
 # Move the nextcloud config to a deoc dir, so we can mount config from the host but export the defaults from the host
-RUN if [ -d /sysimg/usr/share/doc/nextcloud ]; then \
-       mv /sysimg/usr/share/doc/nextcloud /sysimg/usr/share/doc/nextcloud.default ; \
+RUN if [ -d /usr/share/doc/nextcloud ]; then \
+       mv /usr/share/doc/nextcloud /usr/share/doc/nextcloud.default ; \
     else \
-       mkdir -p /sysimg/usr/share/doc/nextcloud.default ; \
+       mkdir -p /usr/share/doc/nextcloud.default ; \
     fi ; \
-    mkdir /sysimg/usr/share/doc/nextcloud.default/config
+    mkdir /usr/share/doc/nextcloud.default/config
 
-ADD www.conf /sysimg/etc/php-fpm.d/www.conf
-ADD 10-opcache.ini /sysimg/etc/php.d/10-opcache.ini
+ADD www.conf /etc/php-fpm.d/www.conf
+ADD 10-opcache.ini /etc/php.d/10-opcache.ini
 
-RUN mkdir /sysimg/etc/php \
+RUN mkdir /etc/php \
     && for CURF in /etc/php-fpm.conf /etc/php-fpm.d /etc/php-zts.d /etc/php.d /etc/php.ini; do \
-        mv -fv /sysimg${CURF} /sysimg/etc/php/$(basename ${CURF}) ; \
-        ln -srfv /sysimg/etc/php/$(basename ${CURF}) /sysimg${CURF} ; \
+        mv -fv ${CURF} /etc/php/$(basename ${CURF}) ; \
+        ln -srfv /etc/php/$(basename ${CURF}) ${CURF} ; \
     done 
-#    mv -fv /sysimg/etc/php /sysimg/usr/share/doc/nextcloud.default/config/etc/php
    
 RUN for CURF in ${VOLUMES} ; do \
-    if [ -d /sysimg${CURF} ]; then \
-        if [ "$(ls -A /sysimg${CURF})" ]; then \
-            mkdir -pv /sysimg/usr/share/doc/nextcloud.default/config${CURF} ; \
-            mv -fv /sysimg${CURF}/* /sysimg/usr/share/doc/nextcloud.default/config${CURF}/ ;\
+    if [ -d ${CURF} ]; then \
+        if [ "$(ls -A ${CURF})" ]; then \
+            mkdir -pv /usr/share/doc/nextcloud.default/config${CURF} ; \
+            mv -fv ${CURF}/* /usr/share/doc/nextcloud.default/config${CURF}/ ;\
         fi ;\
     fi ; \
     done
 
 # Set up systemd inside the container
-RUN systemctl --root /sysimg mask systemd-remount-fs.service dev-hugepages.mount sys-fs-fuse-connections.mount systemd-logind.service getty.target console-getty.service && systemctl --root /sysimg disable dnf-makecache.timer dnf-makecache.service
-RUN /usr/bin/systemctl --root /sysimg enable php-fpm.service
-
-ADD nextcloud-cron.service nextcloud-cron.timer init_container.service /sysimg/etc/systemd/system
+RUN systemctl mask systemd-remount-fs.service dev-hugepages.mount sys-fs-fuse-connections.mount systemd-logind.service getty.target console-getty.service && \
+    systemctl disable dnf-makecache.timer dnf-makecache.service
+ADD nextcloud-cron.service nextcloud-cron.timer init_container.service /etc/systemd/system
 RUN systemctl daemon-reload && \
-    systemctl --root /sysimg enable nextcloud-cron.timer init_container.service
-
-
-
-FROM scratch AS runtime
-
-ARG VOLUMES_ARG="/etc/nextcloud /etc/php /etc/httpd /var/lib/nextcloud /usr/share/nextcloud /var/log/nextcloud /var/lib/php /var/log/php-fpm /run/php-fpm"
-
-COPY --from=build /sysimg /
+    systemctl enable nextcloud-cron.timer init_container.service php-fpm.service
 
 WORKDIR /var/lib/nextcloud
+RUN rm -rf /nextcloud
 
-#ENV USER=$USER
-#ENV CHOWN=true 
-#ENV CHOWN_DIRS="/var/lib/nextcloud /etc/nextcloud" 
-ENV VOLUMES=$VOLUMES_ARG
- 
 VOLUME $VOLUMES
 
+#FIXME the old install scripts are probably obsolete
 ADD ./install.sh \ 
     ./upgrade.sh \
     ./uninstall.sh \
@@ -98,9 +80,8 @@ RUN chmod +x /sbin/install.sh \
              /sbin/uninstall.sh \
              /sbin/init_container.sh
     
-  
 # Using FPM
-EXPOSE 80 443
+EXPOSE 9000
 CMD ["/usr/sbin/init"]
 STOPSIGNAL SIGRTMIN+3
 
