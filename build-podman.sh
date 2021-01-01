@@ -3,7 +3,7 @@
 set +x
 IMAGE_NAME=nextcloud
 OS_RELEASE=${OS_RELEASE:-$(grep VERSION_ID /etc/os-release | cut -d '=' -f 2)}
-OS_IMAGE=${OS_IMAGE:-"registry.fedoraproject.org/fedora:${OS_RELEASE}"}
+OS_IMAGE=${OS_IMAGE:-"registry.fedoraproject.org/fedora-minimal:${OS_RELEASE}"}
 BUILD_ID=${BUILD_ID:-`date +%s`}
 BUILD_ARCH=${BUILD_ARCH:-`uname -m`}
 PUSHREG=${PUSHREG:-""}
