@@ -6,13 +6,18 @@ FROM $OS_IMAGE
 ARG OS_RELEASE
 ARG OS_IMAGE
 ARG HTTP_PROXY=""
-#ARG USER="apache"
+ARG USER="apache"
 ARG DEVBUILD=""
 ARG VOLUMES_ARG="/etc/nextcloud /etc/php /etc/httpd /var/lib/nextcloud /usr/share/nextcloud /var/log/nextcloud /var/lib/php /var/log/php-fpm /run/php-fpm"
 LABEL MAINTAINER riek@llunved.net
 
 ENV VOLUMES=$VOLUMES_ARG
 ENV LANG=C.UTF-8
+
+ENV USER=$USER
+ENV CHOWN=true 
+ENV CHOWN_DIRS="/var/lib/nextcloud /etc/nextcloud" 
+
 USER root
 
 RUN mkdir -p /nextcloud
@@ -21,15 +26,12 @@ WORKDIR /nextcloud
 ADD ./rpmreqs-rt.txt ./rpmreqs-build.txt ./rpmreqs-dev.txt /nextcloud/
 
 ENV http_proxy=$HTTP_PROXY
-RUN microdnf -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$OS_RELEASE.noarch.rpm \
+RUN rpm -ivh  https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$OS_RELEASE.noarch.rpm \
     https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$OS_RELEASE.noarch.rpm  && \
-    microdnf -y upgrade && \
-    microdnf install -y --setopt install_weak_deps=false --nodocs $(cat rpmreqs-rt.txt) && \
-    if [ ! -z "$DEVBUILD" ] ; then microdnf install -y --setopt install_weak_deps=false --nodoc $(cat rpmreqs-dev.txt); fi && \
+    microdnf -y update && \
+    microdnf install -y --setopt install_weak_deps=0 --nodocs $(cat rpmreqs-rt.txt) && \
+    if [ ! -z "$DEVBUILD" ] ; then microdnf install -y --setopt install_weak_deps=0 --nodoc $(cat rpmreqs-dev.txt); fi && \
     rm -rf /var/cache/*
-
-#FIXME this needs to be more elegant
-RUN ln -s /sysimg/usr/share/zoneinfo/America/New_York /sysimg/etc/localtime
 
 # Move the nextcloud config to a deoc dir, so we can mount config from the host but export the defaults from the host
 RUN if [ -d /usr/share/doc/nextcloud ]; then \
@@ -58,11 +60,10 @@ RUN for CURF in ${VOLUMES} ; do \
     done
 
 # Set up systemd inside the container
-RUN systemctl mask systemd-remount-fs.service dev-hugepages.mount sys-fs-fuse-connections.mount systemd-logind.service getty.target console-getty.service && \
-    systemctl disable dnf-makecache.timer dnf-makecache.service
+RUN systemctl --root / mask systemd-remount-fs.service dev-hugepages.mount sys-fs-fuse-connections.mount systemd-logind.service getty.target console-getty.service && \
+    systemctl --root / disable dnf-makecache.timer dnf-makecache.service
 ADD nextcloud-cron.service nextcloud-cron.timer init_container.service /etc/systemd/system
-RUN systemctl daemon-reload && \
-    systemctl enable nextcloud-cron.timer init_container.service php-fpm.service
+RUN systemctl --root / enable nextcloud-cron.timer init_container.service php-fpm.service
 
 WORKDIR /var/lib/nextcloud
 RUN rm -rf /nextcloud
