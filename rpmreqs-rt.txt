@@ -2,4 +2,4 @@ tzdata
 php-fpm
 php-opcache
 nextcloud
-nextcloud-sqlite
+nextcloud-mysql

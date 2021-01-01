@@ -8,7 +8,7 @@ ARG OS_IMAGE
 ARG HTTP_PROXY=""
 #ARG USER="apache"
 ARG DEVBUILD=""
-ARG VOLUMES_ARG="/etc/nextcloud /etc/php /var/lib/nextcloud /usr/share/nextcloud /var/log/nextcloud"
+ARG VOLUMES_ARG="/etc/nextcloud /etc/php /etc/httpd /var/lib/nextcloud /usr/share/nextcloud /var/log/nextcloud /var/lib/php /var/log/php-fpm /run/php-fpm"
 LABEL MAINTAINER riek@llunved.net
 
 ENV VOLUMES=$VOLUMES_ARG
@@ -67,14 +67,15 @@ RUN for CURF in ${VOLUMES} ; do \
 RUN systemctl --root /sysimg mask systemd-remount-fs.service dev-hugepages.mount sys-fs-fuse-connections.mount systemd-logind.service getty.target console-getty.service && systemctl --root /sysimg disable dnf-makecache.timer dnf-makecache.service
 RUN /usr/bin/systemctl --root /sysimg enable php-fpm.service
 
-ADD nextcloud-cron.service nextcloud-cron.timer /sysimg/etc/systemd/system
-RUN systemctl --root /sysimg enable nextcloud-cron.timer
+ADD nextcloud-cron.service nextcloud-cron.timer init_container.service /sysimg/etc/systemd/system
+RUN systemctl daemon-reload && \
+    systemctl --root /sysimg enable nextcloud-cron.timer init_container.service
 
 
 
 FROM scratch AS runtime
 
-ARG VOLUMES_ARG="/etc/nextcloud /etc/php /var/lib/nextcloud /usr/share/nextcloud /var/log/nextcloud"
+ARG VOLUMES_ARG="/etc/nextcloud /etc/php /etc/httpd /var/lib/nextcloud /usr/share/nextcloud /var/log/nextcloud /var/lib/php /var/log/php-fpm /run/php-fpm"
 
 COPY --from=build /sysimg /
 
