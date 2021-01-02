@@ -8,7 +8,7 @@ env
 cp -pRuv /usr/share/doc/nextcloud.default/* /usr/share/doc/nextcloud/
 
 # Always update /usr/share/nextcloud after an update
-cp -pRuv /usr/share/doc/nextcloud.default/config/usr/share/nextcloud/ /usr/share/nextcloud/
+cp -pRuv /usr/share/doc/nextcloud.default/config/usr/share/nextcloud/* /usr/share/nextcloud/
 
 # Copy other config files if they are missing or an update is forced.
 for CUR_DIR in ${VOLUMES} ; do

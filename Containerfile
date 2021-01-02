@@ -65,11 +65,9 @@ RUN for CURF in ${VOLUMES} ; do \
 
 # Set up systemd inside the container
 RUN systemctl --root /sysimg mask systemd-remount-fs.service dev-hugepages.mount sys-fs-fuse-connections.mount systemd-logind.service getty.target console-getty.service && systemctl --root /sysimg disable dnf-makecache.timer dnf-makecache.service
-RUN /usr/bin/systemctl --root /sysimg enable php-fpm.service
-
 ADD nextcloud-cron.service nextcloud-cron.timer init_container.service /sysimg/etc/systemd/system
 RUN systemctl daemon-reload && \
-    systemctl --root /sysimg enable nextcloud-cron.timer init_container.service
+    systemctl --root /sysimg enable nextcloud-cron.timer init_container.service php-fpm.service
 
 
 
